@@ -41,7 +41,8 @@ import org.apache.cloudstack.storage.image.ImageStoreDriver;
 import org.apache.cloudstack.storage.image.datastore.ImageStoreEntity;
 import org.apache.cloudstack.storage.image.datastore.ImageStoreProviderManager;
 import org.apache.cloudstack.storage.image.store.ImageStoreImpl;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Component;
 
 import com.cloud.server.StatsCollector;
@@ -50,7 +51,7 @@ import com.cloud.storage.dao.VMTemplateDao;
 
 @Component
 public class ImageStoreProviderManagerImpl implements ImageStoreProviderManager, Configurable {
-    private static final Logger s_logger = Logger.getLogger(ImageStoreProviderManagerImpl.class);
+    protected Logger logger = LogManager.getLogger(getClass());
     @Inject
     ImageStoreDao dataStoreDao;
     @Inject
@@ -157,7 +158,7 @@ public class ImageStoreProviderManagerImpl implements ImageStoreProviderManager,
     @Override
     public List<DataStore> listImageCacheStores(Scope scope) {
         if (scope.getScopeType() != ScopeType.ZONE) {
-            s_logger.debug("only support zone wide image cache stores");
+            logger.debug("only support zone wide image cache stores");
             return null;
         }
         List<ImageStoreVO> stores = dataStoreDao.findImageCacheByScope(new ZoneScope(scope.getScopeId()));
@@ -185,7 +186,7 @@ public class ImageStoreProviderManagerImpl implements ImageStoreProviderManager,
                 return imageStore;
             }
         }
-        s_logger.error(String.format("Could not find an image storage in zone with less than %d usage",
+        logger.error(String.format("Could not find an image storage in zone with less than %d usage",
                 Math.round(_statsCollector.getImageStoreCapacityThreshold() * 100)));
         return null;
     }
@@ -215,7 +216,7 @@ public class ImageStoreProviderManagerImpl implements ImageStoreProviderManager,
 
         // No store with space found
         if (stores.isEmpty()) {
-            s_logger.error(String.format("Can't find image storage in zone with less than %d usage",
+            logger.error(String.format("Can't find image storage in zone with less than %d usage",
                     Math.round(_statsCollector.getImageStoreCapacityThreshold() * 100)));
         }
         return stores;
