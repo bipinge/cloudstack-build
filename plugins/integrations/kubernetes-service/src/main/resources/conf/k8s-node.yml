@@ -22,7 +22,7 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys: |
-      ${{ k8s.ssh.pub.key }}
+      {{ k8s.ssh.pub.key }}
 
 write_files:
   - path: /opt/bin/setup-kube-system
