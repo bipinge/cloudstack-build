@@ -35,7 +35,6 @@ repos:
       - id: check-symlinks
       - id: check-vcs-permalinks
       - id: check-yaml
-        exclude: ^plugins/integrations/kubernetes-service/src/main/resources/conf
       - id: destroyed-symlinks
       - id: detect-aws-credentials
         args: [--allow-missing-credentials]
