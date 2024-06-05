@@ -127,9 +127,6 @@ public class LibvirtVMDef {
         }
 
         public String getManufacturer() {
-            if (StringUtils.isEmpty(manufacturer)) {
-                return "Apache Software Foundation";
-            }
             return manufacturer;
         }
 
@@ -138,9 +135,6 @@ public class LibvirtVMDef {
         }
 
         public String getProduct() {
-            if (StringUtils.isEmpty(product)) {
-                return String.format("CloudStack %s Hypervisor", _type.toString());
-            }
             return product;
         }
 

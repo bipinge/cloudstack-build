@@ -1262,8 +1262,16 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
                     vmGuru.finalizeVirtualMachineProfile(vmProfile, dest, ctx);
 
                     final VirtualMachineTO vmTO = hvGuru.implement(vmProfile);
-                    vmTO.setMetadataManufacturer(VmMetadataManufacturer.valueIn(vm.getDataCenterId()));
-                    vmTO.setMetadataProductName(VmMetadataProductName.valueIn(vm.getDataCenterId()));
+                    String metadataManufacturer = VmMetadataManufacturer.valueIn(vm.getDataCenterId());
+                    if (StringUtils.isBlank(metadataManufacturer)) {
+                        metadataManufacturer = VmMetadataManufacturer.defaultValue();
+                    }
+                    vmTO.setMetadataManufacturer(metadataManufacturer);
+                    String metadataProduct = VmMetadataProductName.valueIn(vm.getDataCenterId());
+                    if (StringUtils.isBlank(metadataManufacturer)) {
+                        metadataProduct = String.format("CloudStack %s Hypervisor", vm.getHypervisorType().toString());
+                    }
+                    vmTO.setMetadataProductName(metadataProduct);
 
                     checkAndSetEnterSetupMode(vmTO, params);
 
