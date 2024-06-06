@@ -17,6 +17,7 @@
 package org.apache.cloudstack.service;
 
 import com.cloud.network.Network;
+import com.cloud.network.nsx.NsxService;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.vmware.nsx.model.TransportZone;
 import com.vmware.nsx.model.TransportZoneListResult;
@@ -45,13 +46,13 @@ import com.vmware.nsx_policy.model.GroupListResult;
 import com.vmware.nsx_policy.model.ICMPTypeServiceEntry;
 import com.vmware.nsx_policy.model.L4PortSetServiceEntry;
 import com.vmware.nsx_policy.model.LBAppProfileListResult;
+import com.vmware.nsx_policy.model.LBIcmpMonitorProfile;
 import com.vmware.nsx_policy.model.LBMonitorProfileListResult;
 import com.vmware.nsx_policy.model.LBPool;
 import com.vmware.nsx_policy.model.LBPoolListResult;
 import com.vmware.nsx_policy.model.LBPoolMember;
 import com.vmware.nsx_policy.model.LBService;
 import com.vmware.nsx_policy.model.LBTcpMonitorProfile;
-import com.vmware.nsx_policy.model.LBUdpMonitorProfile;
 import com.vmware.nsx_policy.model.LBVirtualServer;
 import com.vmware.nsx_policy.model.LBVirtualServerListResult;
 import com.vmware.nsx_policy.model.LocaleServicesListResult;
@@ -123,7 +124,7 @@ public class NsxApiClient {
     // TODO: Pass as global / zone-level setting?
     protected static final String NSX_LB_PASSIVE_MONITOR = "/infra/lb-monitor-profiles/default-passive-lb-monitor";
     protected static final String TCP_MONITOR_PROFILE = "LBTcpMonitorProfile";
-    protected static final String UDP_MONITOR_PROFILE = "LBUdpMonitorProfile";
+    protected static final String ICMP_MONITOR_PROFILE = "LBIcmpMonitorProfile";
     protected static final String NAT_ID = "USER";
 
     private enum PoolAllocation { ROUTING, LB_SMALL, LB_MEDIUM, LB_LARGE, LB_XLARGE }
@@ -435,7 +436,7 @@ public class NsxApiClient {
                 String t1GatewayName = getTier1GatewayName(domainId, accountId, zoneId, networkId, false);
                 deleteLoadBalancer(getLoadBalancerName(t1GatewayName));
             }
-            removeSegment(segmentName);
+            removeSegment(segmentName, zoneId);
             DhcpRelayConfigs dhcpRelayConfig = (DhcpRelayConfigs) nsxService.apply(DhcpRelayConfigs.class);
             String dhcpRelayConfigId = NsxControllerUtils.getNsxDhcpRelayConfigId(zoneId, domainId, accountId, vpcId, networkId);
             logger.debug(String.format("Removing the DHCP relay config with ID %s", dhcpRelayConfigId));
@@ -448,7 +449,7 @@ public class NsxApiClient {
         }
     }
 
-    protected void removeSegment(String segmentName) {
+    protected void removeSegment(String segmentName, long zoneId) {
         logger.debug(String.format("Removing the segment with ID %s", segmentName));
         Segments segmentService = (Segments) nsxService.apply(Segments.class);
         String errMsg = String.format("The segment with ID %s is not found, skipping removal", segmentName);
@@ -467,15 +468,16 @@ public class NsxApiClient {
         SegmentPorts segmentPortsService = (SegmentPorts) nsxService.apply(SegmentPorts.class);
         PolicyGroupMembersListResult segmentPortsList = getSegmentPortList(segmentPortsService, segmentName, enforcementPointPath);
         Long portCount = segmentPortsList.getResultCount();
-        portCount = retrySegmentDeletion(segmentPortsService, portCount, segmentName, enforcementPointPath);
-        logger.info("Port count: " + portCount);
+        if (portCount > 0L) {
+            portCount = retrySegmentDeletion(segmentPortsService, segmentName, enforcementPointPath, zoneId);
+        }
         if (portCount == 0L) {
             logger.debug(String.format("Removing the segment with ID %s", segmentName));
             removeGroupForSegment(segmentName);
             segmentService.delete(segmentName);
         } else {
             String msg = String.format("Cannot remove the NSX segment %s because there are still %s port group(s) attached to it", segmentName, portCount);
-            logger.debug(msg);
+            logger.error(msg);
             throw new CloudRuntimeException(msg);
         }
     }
@@ -485,13 +487,16 @@ public class NsxApiClient {
                 false, null, 50L, false, null);
     }
 
-    private Long retrySegmentDeletion(SegmentPorts segmentPortsService, Long portCount, String segmentName, String enforcementPointPath) {
-        int retries = 20;
+    private Long retrySegmentDeletion(SegmentPorts segmentPortsService, String segmentName, String enforcementPointPath, long zoneId) {
+        int retries = NsxService.NSX_API_FAILURE_RETRIES.valueIn(zoneId);
+        int waitingSecs = NsxService.NSX_API_FAILURE_INTERVAL.valueIn(zoneId);
         int count = 1;
+        Long portCount;
         do {
             try {
-                logger.info("Waiting for all port groups to be unlinked from the segment - Attempt: " + count++ + " Waiting for 5 secs");
-                Thread.sleep(5000);
+                logger.info(String.format("Waiting for all port groups to be unlinked from the segment %s - " +
+                        "Attempt: %s. Waiting for %s secs", segmentName, count++, waitingSecs));
+                Thread.sleep(waitingSecs * 1000L);
                 portCount = getSegmentPortList(segmentPortsService, segmentName, enforcementPointPath).getResultCount();
                 retries--;
             } catch (InterruptedException e) {
@@ -637,13 +642,10 @@ public class NsxApiClient {
                     .build();
             lbActiveMonitor.patch(lbMonitorProfileId, lbTcpMonitorProfile);
         } else if ("UDP".equals(protocol.toUpperCase(Locale.ROOT))) {
-            LBUdpMonitorProfile lbUdpMonitorProfile = new LBUdpMonitorProfile.Builder(UDP_MONITOR_PROFILE)
+            LBIcmpMonitorProfile icmpMonitorProfile = new LBIcmpMonitorProfile.Builder(ICMP_MONITOR_PROFILE)
                     .setDisplayName(lbMonitorProfileId)
-                    .setMonitorPort(Long.parseLong(port))
-                    .setSend("")
-                    .setReceive("")
                     .build();
-            lbActiveMonitor.patch(lbMonitorProfileId, lbUdpMonitorProfile);
+            lbActiveMonitor.patch(lbMonitorProfileId, icmpMonitorProfile);
         }
 
         LBMonitorProfileListResult listResult = listLBActiveMonitors(lbActiveMonitor);
