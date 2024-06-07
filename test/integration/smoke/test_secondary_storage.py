@@ -325,7 +325,7 @@ class TestSecStorageServices(cloudstackTestCase):
         """
 
         storages = self.list_secondary_storages(self.apiclient)
-        if (len(storages)) < 2:
+        if (len(storages)) < 2 or (storages[0]['zoneid'] != storages[1]['zoneid']):
             self.skipTest(
                 "This test requires more than one secondary storage")
 

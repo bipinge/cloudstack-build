@@ -16,6 +16,7 @@
 // under the License.
 
 import {
+  AimOutlined,
   ApartmentOutlined,
   ApiOutlined,
   AppstoreOutlined,
@@ -89,6 +90,7 @@ import {
   FormOutlined,
   ForwardOutlined,
   FullscreenOutlined,
+  FunnelPlotOutlined,
   GatewayOutlined,
   GithubOutlined,
   GlobalOutlined,
@@ -120,6 +122,7 @@ import {
   MoreOutlined,
   NotificationOutlined,
   NumberOutlined,
+  LaptopOutlined,
   OrderedListOutlined,
   PaperClipOutlined,
   PauseCircleOutlined,
@@ -164,6 +167,8 @@ import {
   UserOutlined,
   UserSwitchOutlined,
   UploadOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
   WarningOutlined,
   WifiOutlined,
   SolutionOutlined
@@ -172,6 +177,7 @@ import renderIcon from '@/utils/renderIcon'
 
 export default {
   install: (app) => {
+    app.component('AimOutlined', AimOutlined)
     app.component('ApartmentOutlined', ApartmentOutlined)
     app.component('ApiOutlined', ApiOutlined)
     app.component('AppstoreOutlined', AppstoreOutlined)
@@ -245,6 +251,7 @@ export default {
     app.component('FormOutlined', FormOutlined)
     app.component('ForwardOutlined', ForwardOutlined)
     app.component('FullscreenOutlined', FullscreenOutlined)
+    app.component('FunnelPlotOutlined', FunnelPlotOutlined)
     app.component('GatewayOutlined', GatewayOutlined)
     app.component('GithubOutlined', GithubOutlined)
     app.component('GlobalOutlined', GlobalOutlined)
@@ -276,6 +283,7 @@ export default {
     app.component('MoreOutlined', MoreOutlined)
     app.component('NotificationOutlined', NotificationOutlined)
     app.component('NumberOutlined', NumberOutlined)
+    app.component('LaptopOutlined', LaptopOutlined)
     app.component('OrderedListOutlined', OrderedListOutlined)
     app.component('PaperClipOutlined', PaperClipOutlined)
     app.component('PauseCircleOutlined', PauseCircleOutlined)
@@ -320,6 +328,8 @@ export default {
     app.component('UserOutlined', UserOutlined)
     app.component('UserSwitchOutlined', UserSwitchOutlined)
     app.component('UploadOutlined', UploadOutlined)
+    app.component('VerticalAlignBottomOutlined', VerticalAlignBottomOutlined)
+    app.component('VerticalAlignTopOutlined', VerticalAlignTopOutlined)
     app.component('WarningOutlined', WarningOutlined)
     app.component('WifiOutlined', WifiOutlined)
     app.component('renderIcon', renderIcon)

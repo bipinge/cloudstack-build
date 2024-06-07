@@ -21,9 +21,10 @@ import store from '@/store'
 export default {
   name: 'storagepool',
   title: 'label.primary.storage',
-  icon: 'database-outlined',
+  icon: 'hdd-outlined',
   docHelp: 'adminguide/storage.html#primary-storage',
   permission: ['listStoragePoolsMetrics'],
+  searchFilters: ['name', 'zoneid', 'podid', 'clusterid', 'ipaddress', 'path', 'scope'],
   columns: () => {
     const fields = ['name', 'state', 'ipaddress', 'scope', 'type', 'path']
     const metricsFields = ['disksizeusedgb', 'disksizetotalgb', 'disksizeallocatedgb', 'disksizeunallocatedgb']
@@ -39,6 +40,16 @@ export default {
     name: 'volume',
     title: 'label.volumes',
     param: 'storageid'
+  },
+  {
+    name: 'template',
+    title: 'label.templates',
+    param: 'storageid'
+  },
+  {
+    name: 'iso',
+    title: 'label.isos',
+    param: 'storageid'
   }],
   resourceType: 'PrimaryStorage',
   filters: () => {
@@ -51,6 +62,10 @@ export default {
   }, {
     name: 'settings',
     component: shallowRef(defineAsyncComponent(() => import('@/components/view/SettingsTab.vue')))
+  }, {
+    name: 'browser',
+    resourceType: 'PrimaryStorage',
+    component: shallowRef(defineAsyncComponent(() => import('@/views/infra/StorageBrowser.vue')))
   }, {
     name: 'events',
     resourceType: 'StoragePool',
@@ -75,7 +90,7 @@ export default {
       icon: 'edit-outlined',
       label: 'label.edit',
       dataView: true,
-      args: ['name', 'tags', 'capacitybytes', 'capacityiops']
+      args: ['name', 'tags', 'istagarule', 'capacitybytes', 'capacityiops']
     },
     {
       api: 'updateStoragePool',

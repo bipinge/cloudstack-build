@@ -36,6 +36,12 @@
                 <span v-else>
                   <os-logo v-if="resource.ostypeid || resource.ostypename" :osId="resource.ostypeid" :osName="resource.ostypename" size="4x" @update-osname="setResourceOsType"/>
                   <render-icon v-else-if="typeof $route.meta.icon ==='string'" style="font-size: 36px" :icon="$route.meta.icon" />
+                  <font-awesome-icon
+                    v-else-if="$route.meta.icon && Array.isArray($route.meta.icon)"
+                    :icon="$route.meta.icon"
+                    size="4x"
+                    class="anticon"
+                    :style="[$store.getters.darkMode ? { color: 'rgba(255, 255, 255, 0.65)' } : { color: '#888' }]" />
                   <render-icon v-else style="font-size: 36px" :svgIcon="$route.meta.icon" />
                 </span>
               </slot>
@@ -84,11 +90,31 @@
               <a-tag v-if="resource.internetprotocol && ['IPv6', 'DualStack'].includes(resource.internetprotocol)">
                 {{ resource.internetprotocol ? $t('label.ip.v4.v6') : resource.internetprotocol }}
               </a-tag>
+              <a-tag v-if="resource.archived" :color="this.$config.theme['@warning-color']">
+                {{ $t('label.archived') }}
+              </a-tag>
               <a-tooltip placement="right" >
                 <template #title>
                   <span>{{ $t('label.view.console') }}</span>
                 </template>
-                <console style="margin-top: -5px;" :resource="resource" size="default" v-if="resource.id" />
+                <console
+                  style="margin-top: -5px;"
+                  :resource="resource"
+                  size="default"
+                  v-if="resource.id"
+                />
+              </a-tooltip>
+              <a-tooltip placement="right" >
+                <template #title>
+                  <span>{{ $t('label.copy.consoleurl') }}</span>
+                </template>
+                <console
+                  copyUrlToClipboard
+                  style="margin-top: -5px;"
+                  :resource="resource"
+                  size="default"
+                  v-if="resource.id"
+                />
               </a-tooltip>
             </div>
           </slot>
@@ -124,7 +150,7 @@
               icon="barcode-outlined"
               type="dashed"
               size="small"
-              :copyResource="resource.id"
+              :copyResource="String(resource.id)"
               @onClick="$message.success($t('label.copied.clipboard'))" />
             <span style="margin-left: 10px;"><copy-label :label="resource.id" /></span>
           </div>
@@ -264,10 +290,20 @@
           </div>
         </div>
         <div class="resource-detail-item" v-if="resource.volumes || resource.sizegb">
-          <div class="resource-detail-item__label">{{ $t('label.disksize') }}</div>
+          <div class="resource-detail-item__label" v-if="$route.meta.name === 'backup'">{{ $t('label.size') }}</div>
+          <div class="resource-detail-item__label" v-else>{{ $t('label.disksize') }}</div>
           <div class="resource-detail-item__details">
             <hdd-outlined />
             <span style="width: 100%;" v-if="$route.meta.name === 'vm' && resource.volumes">{{ (resource.volumes.reduce((total, item) => total += item.size, 0) / (1024 * 1024 * 1024.0)).toFixed(2) }} GB Storage</span>
+            <span style="width: 100%;" v-else-if="$route.meta.name === 'backup'">
+              {{ $bytesToHumanReadableSize(resource.size) }}
+              <a-tooltip placement="right">
+                <template #title>
+                  {{ resource.size }} bytes
+                </template>
+                <QuestionCircleOutlined />
+              </a-tooltip>
+            </span>
             <span style="width: 100%;" v-else-if="resource.sizegb || resource.size">{{ resource.sizegb || (resource.size/1024.0) }}</span>
           </div>
           <div style="margin-left: 25px; margin-top: 5px" v-if="resource.diskkbsread && resource.diskkbswrite && resource.diskioread && resource.diskiowrite">
@@ -488,7 +524,7 @@
           <div class="resource-detail-item__details">
             <resource-icon v-if="resource.icon" :image="getImage(resource.icon.base64image)" size="1x" style="margin-right: 5px"/>
             <SaveOutlined v-else />
-            <router-link :to="{ path: '/template/' + resource.templateid }">{{ resource.templatedisplaytext || resource.templatename || resource.templateid }} </router-link>
+            <router-link :to="{ path: (resource.templateformat === 'ISO' ? '/iso/' : '/template/') + resource.templateid }">{{ resource.templatedisplaytext || resource.templatename || resource.templateid }} </router-link>
           </div>
         </div>
         <div class="resource-detail-item" v-if="resource.isoid">
@@ -503,7 +539,7 @@
           <div class="resource-detail-item__label">{{ $t('label.serviceofferingname') }}</div>
           <div class="resource-detail-item__details">
             <cloud-outlined />
-            <router-link v-if="!isStatic && $route.meta.name === 'router'" :to="{ path: '/computeoffering/' + resource.serviceofferingid, query: { issystem: true } }">{{ resource.serviceofferingname || resource.serviceofferingid }} </router-link>
+            <router-link v-if="!isStatic && ($route.meta.name === 'router' || $route.meta.name === 'systemvm')" :to="{ path: '/systemoffering/' + resource.serviceofferingid}">{{ resource.serviceofferingname || resource.serviceofferingid }} </router-link>
             <router-link v-else-if="$router.resolve('/computeoffering/' + resource.serviceofferingid).matched[0].redirect !== '/exception/404'" :to="{ path: '/computeoffering/' + resource.serviceofferingid }">{{ resource.serviceofferingname || resource.serviceofferingid }} </router-link>
             <span v-else>{{ resource.serviceofferingname || resource.serviceofferingid }}</span>
           </div>
@@ -867,7 +903,7 @@ export default {
     },
     name () {
       return this.resource.displayname || this.resource.name || this.resource.displaytext || this.resource.username ||
-        this.resource.ipaddress || this.resource.virtualmachinename || this.resource.templatetype
+        this.resource.ipaddress || this.resource.virtualmachinename || this.resource.osname || this.resource.osdisplayname || this.resource.templatetype
     },
     keypairs () {
       if (!this.resource.keypairs) {
@@ -882,8 +918,13 @@ export default {
       return this.resource.templateid
     },
     resourceIcon () {
-      if (this.$showIcon() && this.resource?.icon?.base64image) {
-        return this.resource.icon.base64image
+      if (this.$showIcon()) {
+        if (this.resource?.icon?.base64image) {
+          return this.resource.icon.base64image
+        }
+        if (this.resource?.resourceIcon?.base64image) {
+          return this.resource.resourceIcon.base64image
+        }
       }
       return null
     },

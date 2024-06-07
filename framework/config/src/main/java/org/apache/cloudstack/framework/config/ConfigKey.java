@@ -150,7 +150,7 @@ public class ConfigKey<T> {
 
     public ConfigKey(Class<T> type, String name, String category, String defaultValue, String description, boolean isDynamic, Scope scope, T multiplier,
                      String displayText, String parent, Ternary<String, String, Long> group, Pair<String, Long> subGroup) {
-        this(type, name, category, defaultValue, description, isDynamic, scope, multiplier, null, parent, null, null, null, null);
+        this(type, name, category, defaultValue, description, isDynamic, scope, multiplier, displayText, parent, group, subGroup, null, null);
     }
 
     public ConfigKey(Class<T> type, String name, String category, String defaultValue, String description, boolean isDynamic, Scope scope, T multiplier,
@@ -211,7 +211,7 @@ public class ConfigKey<T> {
 
     public T value() {
         if (_value == null || isDynamic()) {
-            ConfigurationVO vo = s_depot != null ? s_depot.global().findById(key()) : null;
+            ConfigurationVO vo = (s_depot != null && s_depot.global() != null) ? s_depot.global().findById(key()) : null;
             final String value = (vo != null && vo.getValue() != null) ? vo.getValue() : defaultValue();
             _value = ((value == null) ? (T)defaultValue() : valueOf(value));
         }

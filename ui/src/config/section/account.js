@@ -24,6 +24,7 @@ export default {
   icon: 'team-outlined',
   docHelp: 'adminguide/accounts.html',
   permission: ['listAccounts'],
+  searchFilters: ['name', 'accounttype', 'domainid'],
   columns: ['name', 'state', 'rolename', 'roletype', 'domainpath'],
   details: ['name', 'id', 'rolename', 'roletype', 'domainpath', 'networkdomain', 'iptotal', 'vmtotal', 'volumetotal', 'receivedbytes', 'sentbytes', 'created'],
   related: [{
@@ -91,7 +92,7 @@ export default {
       icon: 'edit-outlined',
       label: 'label.action.edit.account',
       dataView: true,
-      args: ['newname', 'account', 'domainid', 'networkdomain'],
+      args: ['newname', 'account', 'domainid', 'networkdomain', 'roleid'],
       mapping: {
         account: {
           value: (record) => { return record.name }
@@ -199,9 +200,8 @@ export default {
       label: 'label.action.delete.account',
       message: 'message.delete.account',
       dataView: true,
-      show: (record, store) => {
-        return ['Admin', 'DomainAdmin'].includes(store.userInfo.roletype) && !record.isdefault &&
-          !(record.domain === 'ROOT' && record.name === 'admin' && record.accounttype === 1)
+      disabled: (record, store) => {
+        return record.id !== 'undefined' && store.userInfo.accountid === record.id
       },
       groupAction: true,
       popup: true,

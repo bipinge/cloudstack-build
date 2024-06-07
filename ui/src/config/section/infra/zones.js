@@ -22,7 +22,9 @@ export default {
   name: 'zone',
   title: 'label.zones',
   icon: 'global-outlined',
+  docHelp: 'conceptsandterminology/concepts.html#about-zones',
   permission: ['listZonesMetrics'],
+  searchFilters: ['name', 'domainid', 'tags'],
   columns: () => {
     const fields = ['name', 'allocationstate', 'type', 'networktype', 'clusters']
     const metricsFields = ['cpuused', 'cpumaxdeviation', 'cpuallocated', 'cputotal', 'memoryused', 'memorymaxdeviation', 'memoryallocated', 'memorytotal']
