@@ -225,6 +225,7 @@ public class VirtualMachineManagerImplTest {
     protected StateMachine2<State, VirtualMachine.Event, VirtualMachine> _stateMachine;
 
     private ConfigDepotImpl configDepotImpl;
+    private boolean updatedConfigKeyDepot = false;
 
     @Before
     public void setup() {
@@ -260,7 +261,9 @@ public class VirtualMachineManagerImplTest {
 
     @After
     public void cleanup() {
-        ReflectionTestUtils.setField(VirtualMachineManager.VmMetadataManufacturer, "s_depot", configDepotImpl);
+        if (updatedConfigKeyDepot) {
+            ReflectionTestUtils.setField(VirtualMachineManager.VmMetadataManufacturer, "s_depot", configDepotImpl);
+        }
     }
 
     @Test
@@ -1260,10 +1263,7 @@ public class VirtualMachineManagerImplTest {
         Mockito.when(configDepot.findScopedConfigStorage(configKey)).thenReturn(storage);
         Mockito.when(configDepot.findScopedConfigStorage(VirtualMachineManager.VmMetadataProductName)).thenReturn(storage);
         ReflectionTestUtils.setField(configKey, "s_depot", configDepot);
-    }
-
-    private void restoreConfigDepot() {
-        ReflectionTestUtils.setField(VirtualMachineManager.VmMetadataManufacturer, "s_depot", this.configDepotImpl);
+        updatedConfigKeyDepot = true;
     }
 
     private Pair<VirtualMachineTO, VMInstanceVO> getDummyVmTOAndVm() {
