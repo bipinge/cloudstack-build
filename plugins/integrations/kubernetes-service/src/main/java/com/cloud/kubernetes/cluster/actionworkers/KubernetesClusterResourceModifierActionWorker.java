@@ -503,7 +503,7 @@ public class KubernetesClusterResourceModifierActionWorker extends KubernetesClu
 
     protected FirewallRule removeApiFirewallRule(final IpAddress publicIp) {
         FirewallRule rule = null;
-        List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpAndPurposeAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall);
+        List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpPurposeProtocolAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall, "tcp");
         for (FirewallRuleVO firewallRule : firewallRules) {
             Integer startPort = firewallRule.getSourcePortStart();
             Integer endPort = firewallRule.getSourcePortEnd();
@@ -519,7 +519,7 @@ public class KubernetesClusterResourceModifierActionWorker extends KubernetesClu
 
     protected FirewallRule removeSshFirewallRule(final IpAddress publicIp) {
         FirewallRule rule = null;
-        List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpAndPurposeAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall);
+        List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpPurposeProtocolAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall, "tcp");
         for (FirewallRuleVO firewallRule : firewallRules) {
             Integer startPort = firewallRule.getSourcePortStart();
             if (startPort != null && startPort == CLUSTER_NODES_DEFAULT_START_SSH_PORT) {
