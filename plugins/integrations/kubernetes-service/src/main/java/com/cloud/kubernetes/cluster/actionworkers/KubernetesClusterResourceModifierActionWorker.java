@@ -505,8 +505,10 @@ public class KubernetesClusterResourceModifierActionWorker extends KubernetesClu
         FirewallRule rule = null;
         List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpAndPurposeAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall);
         for (FirewallRuleVO firewallRule : firewallRules) {
-            if (firewallRule.getSourcePortStart() == CLUSTER_API_PORT &&
-                    firewallRule.getSourcePortEnd() == CLUSTER_API_PORT) {
+            Integer startPort = firewallRule.getSourcePortStart();
+            Integer endPort = firewallRule.getSourcePortEnd();
+            if (startPort != null && startPort == CLUSTER_API_PORT &&
+                    endPort != null && endPort == CLUSTER_API_PORT) {
                 rule = firewallRule;
                 firewallService.revokeIngressFwRule(firewallRule.getId(), true);
                 break;
@@ -519,7 +521,8 @@ public class KubernetesClusterResourceModifierActionWorker extends KubernetesClu
         FirewallRule rule = null;
         List<FirewallRuleVO> firewallRules = firewallRulesDao.listByIpAndPurposeAndNotRevoked(publicIp.getId(), FirewallRule.Purpose.Firewall);
         for (FirewallRuleVO firewallRule : firewallRules) {
-            if (firewallRule.getSourcePortStart() == CLUSTER_NODES_DEFAULT_START_SSH_PORT) {
+            Integer startPort = firewallRule.getSourcePortStart();
+            if (startPort != null && startPort == CLUSTER_NODES_DEFAULT_START_SSH_PORT) {
                 rule = firewallRule;
                 firewallService.revokeIngressFwRule(firewallRule.getId(), true);
                 break;
