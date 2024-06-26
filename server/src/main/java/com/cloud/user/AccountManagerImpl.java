@@ -77,11 +77,13 @@ import org.apache.cloudstack.region.gslb.GlobalLoadBalancerRuleDao;
 import org.apache.cloudstack.resourcedetail.UserDetailVO;
 import org.apache.cloudstack.resourcedetail.dao.UserDetailsDao;
 import org.apache.cloudstack.utils.baremetal.BaremetalUtils;
+import org.apache.cloudstack.webhook.WebhookHelper;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 import com.cloud.api.ApiDBUtils;
 import com.cloud.api.auth.SetupUserTwoFactorAuthenticationCmd;
@@ -168,6 +170,7 @@ import com.cloud.utils.ConstantTimeComparator;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.Pair;
 import com.cloud.utils.Ternary;
+import com.cloud.utils.component.ComponentContext;
 import com.cloud.utils.component.Manager;
 import com.cloud.utils.component.ManagerBase;
 import com.cloud.utils.component.PluggableService;
@@ -330,6 +333,7 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
 
     private List<SecurityChecker> _securityCheckers;
     private int _cleanupInterval;
+    private static final String OAUTH2_PROVIDER_NAME = "oauth2";
     private List<String> apiNameList;
 
     protected static Map<String, UserTwoFactorAuthenticator> userTwoFactorAuthenticationProvidersMap = new HashMap<>();
@@ -423,6 +427,20 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
 
     public void setQuerySelectors(List<QuerySelector> querySelectors) {
         _querySelectors = querySelectors;
+    }
+
+    protected void deleteWebhooksForAccount(long accountId) {
+        try {
+            WebhookHelper webhookService = ComponentContext.getDelegateComponentOfType(WebhookHelper.class);
+            webhookService.deleteWebhooksForAccount(accountId);
+        } catch (NoSuchBeanDefinitionException ignored) {
+            logger.debug("No WebhookHelper bean found");
+        }
+    }
+
+    @Override
+    public List<String> getApiNameList() {
+        return apiNameList;
     }
 
     @Override
@@ -858,7 +876,7 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
                 _messageBus.publish(_name, MESSAGE_REMOVE_ACCOUNT_EVENT, PublishScope.LOCAL, accountId);
             }
 
-            // delete all vm groups belonging to accont
+            // delete all vm groups belonging to account
             List<InstanceGroupVO> groups = _vmGroupDao.listByAccountId(accountId);
             for (InstanceGroupVO group : groups) {
                 if (!_vmMgr.deleteVmGroup(group.getId())) {
@@ -1098,6 +1116,9 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
 
             // Delete registered UserData
             userDataDao.removeByAccountId(accountId);
+
+            // Delete Webhooks
+            deleteWebhooksForAccount(accountId);
 
             return true;
         } catch (Exception ex) {
@@ -2064,13 +2085,20 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
     @Override
     @ActionEvent(eventType = EventTypes.EVENT_USER_DELETE, eventDescription = "deleting User")
     public boolean deleteUser(DeleteUserCmd deleteUserCmd) {
-        UserVO user = getValidUserVO(deleteUserCmd.getId());
-
+        final Long id = deleteUserCmd.getId();
+        User caller = CallContext.current().getCallingUser();
+        UserVO user = getValidUserVO(id);
         Account account = _accountDao.findById(user.getAccountId());
+
+        if (caller.getId() == id) {
+            Domain domain = _domainDao.findById(account.getDomainId());
+            throw new InvalidParameterValueException(String.format("The caller is requesting to delete itself. As a security measure, ACS will not allow this operation." +
+                    " To delete user %s (ID: %s, Domain: %s), request to another user with permission to execute the operation.", user.getUsername(), user.getUuid(), domain.getUuid()));
+        }
 
         // don't allow to delete the user from the account of type Project
         checkAccountAndAccess(user, account);
-        return _userDao.remove(deleteUserCmd.getId());
+        return _userDao.remove(id);
     }
 
     @Override
@@ -2145,7 +2173,7 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
         }
     }
 
-    private void checkAccountAndAccess(UserVO user, Account account) {
+    protected void checkAccountAndAccess(UserVO user, Account account) {
         // don't allow to delete the user from the account of type Project
         if (account.getType() == Account.Type.PROJECT) {
             throw new InvalidParameterValueException("Project users cannot be deleted or moved.");
@@ -2155,7 +2183,7 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
         CallContext.current().putContextParameter(User.class, user.getUuid());
     }
 
-    private UserVO getValidUserVO(long id) {
+    protected UserVO getValidUserVO(long id) {
         UserVO user = _userDao.findById(id);
 
         if (user == null || user.getRemoved() != null) {
@@ -2648,7 +2676,8 @@ public class AccountManagerImpl extends ManagerBase implements AccountManager, M
                     continue;
                 }
             }
-            if (secretCode != null && !authenticator.getName().equals("oauth2")) {
+            if ((secretCode != null && !authenticator.getName().equals(OAUTH2_PROVIDER_NAME))
+                    || (secretCode == null && authenticator.getName().equals(OAUTH2_PROVIDER_NAME))) {
                 continue;
             }
             Pair<Boolean, ActionOnFailedAuthentication> result = authenticator.authenticate(username, password, domainId, requestParameters);

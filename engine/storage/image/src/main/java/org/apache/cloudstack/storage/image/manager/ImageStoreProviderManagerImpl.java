@@ -186,6 +186,7 @@ public class ImageStoreProviderManagerImpl implements ImageStoreProviderManager,
                 return imageStore;
             }
         }
+
         logger.error(String.format("Could not find an image storage in zone with less than %d usage",
                 Math.round(_statsCollector.getImageStoreCapacityThreshold() * 100)));
         return null;

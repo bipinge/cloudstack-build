@@ -68,7 +68,7 @@ public class PublicNetworkGuru extends AdapterBase implements NetworkGuru {
     @Inject
     NetworkOrchestrationService _networkMgr;
     @Inject
-    IPAddressDao _ipAddressDao;
+    protected IPAddressDao _ipAddressDao;
     @Inject
     IpAddressManager _ipAddrMgr;
     @Inject
@@ -98,7 +98,7 @@ public class PublicNetworkGuru extends AdapterBase implements NetworkGuru {
     }
 
     @Override
-    public Network design(NetworkOffering offering, DeploymentPlan plan, Network network, Account owner) {
+    public Network design(NetworkOffering offering, DeploymentPlan plan, Network network, String name, Long vpcId, Account owner) {
         if (!canHandle(offering)) {
             return null;
         }
@@ -113,6 +113,11 @@ public class PublicNetworkGuru extends AdapterBase implements NetworkGuru {
         }
     }
 
+    @Override
+    public void setup(Network network, long networkId) {
+        // do nothing
+    }
+
     protected PublicNetworkGuru() {
         super();
     }
@@ -124,7 +129,7 @@ public class PublicNetworkGuru extends AdapterBase implements NetworkGuru {
             if (vm.getType().equals(VirtualMachine.Type.ConsoleProxy) || vm.getType().equals(VirtualMachine.Type.SecondaryStorageVm)) {
                 forSystemVms = true;
             }
-            PublicIp ip = _ipAddrMgr.assignPublicIpAddress(dc.getId(), null, vm.getOwner(), VlanType.VirtualNetwork, null, null, false, forSystemVms);
+            PublicIp ip = _ipAddrMgr.assignPublicIpAddress(dc.getId(), null, vm.getOwner(), VlanType.VirtualNetwork, null, null, forSystemVms, forSystemVms);
             nic.setIPv4Address(ip.getAddress().toString());
             nic.setIPv4Gateway(ip.getGateway());
             nic.setIPv4Netmask(ip.getNetmask());
