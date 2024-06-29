@@ -732,8 +732,9 @@ public class IpAddressManagerImpl extends ManagerBase implements IpAddressManage
         PublicIpQuarantine publicIpQuarantine = null;
         // Cleanup all ip address resources - PF/LB/Static nat rules
         if (!cleanupIpResources(addrId, userId, caller)) {
-            success = false;
-            s_logger.warn("Failed to release resources for ip address id=" + addrId);
+            String msg = String.format("Failed to release resources for ip address id=%s", addrId);
+            s_logger.error(msg);
+            throw new CloudRuntimeException(msg);
         }
 
         IPAddressVO ip = markIpAsUnavailable(addrId);
@@ -1567,7 +1568,7 @@ public class IpAddressManagerImpl extends ManagerBase implements IpAddressManage
                 if (ip != null) {
                     try {
                         s_logger.warn("Failed to associate ip address, so releasing ip from the database " + ip);
-                        _ipAddressDao.markAsUnavailable(ip.getId());
+                        _ipAddressDao.markAsReleasing(ip.getId());
                         if (!applyIpAssociations(network, true)) {
                             // if fail to apply ip associations again, unassign ip address without updating resource
                             // count and generating usage event as there is no need to keep it in the db
@@ -1981,7 +1982,7 @@ public class IpAddressManagerImpl extends ManagerBase implements IpAddressManage
                         }
                     }
 
-                    return _ipAddressDao.markAsUnavailable(addrId);
+                    return _ipAddressDao.markAsReleasing(addrId);
                 }
             });
         }
