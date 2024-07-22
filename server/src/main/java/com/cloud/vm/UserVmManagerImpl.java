@@ -682,7 +682,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             HypervisorType.XenServer,
             HypervisorType.Simulator
     ));
-    public static final List<HypervisorType> VM_STORAGE_MIGRATION_WITH_SUPPORTING_SUPPORTING_HYPERVISORS = new ArrayList<>(Arrays.asList(
+    public static final List<HypervisorType> VM_STORAGE_MIGRATION_WITH_SNAPSHOTS_SUPPORTING_HYPERVISORS = new ArrayList<>(Arrays.asList(
             HypervisorType.VMware
     ));
 
@@ -7232,7 +7232,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             throw new InvalidParameterValueException(String.format("Unsupported hypervisor: %s for VM migration, we support XenServer/VMware/KVM only", vm.getHypervisorType()));
         }
 
-        if (!VM_STORAGE_MIGRATION_WITH_SUPPORTING_SUPPORTING_HYPERVISORS.contains(vm.getHypervisorType()) &&
+        if (!VM_STORAGE_MIGRATION_WITH_SNAPSHOTS_SUPPORTING_HYPERVISORS.contains(vm.getHypervisorType()) &&
                 CollectionUtils.isNotEmpty(_vmSnapshotDao.findByVm(vmId))) {
             throw new InvalidParameterValueException("VM with VM Snapshots cannot be migrated with storage, please remove all VM snapshots");
         }
