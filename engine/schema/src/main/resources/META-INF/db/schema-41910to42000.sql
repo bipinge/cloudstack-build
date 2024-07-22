@@ -23,18 +23,29 @@
 CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_limit', 'tag', 'varchar(64) DEFAULT NULL COMMENT "tag for the limit" ');
 CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_count', 'tag', 'varchar(64) DEFAULT NULL COMMENT "tag for the resource count" ');
 CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_reservation', 'tag', 'varchar(64) DEFAULT NULL COMMENT "tag for the resource reservation" ');
-ALTER TABLE `resource_count`
-DROP INDEX `i_resource_count__type_accountId`,
-DROP INDEX `i_resource_count__type_domaintId`,
-ADD UNIQUE INDEX `i_resource_count__type_tag_accountId` (`type`,`tag`,`account_id`),
-ADD UNIQUE INDEX `i_resource_count__type_tag_domaintId` (`type`,`tag`,`domain_id`);
+CALL `cloud`.`IDEMPOTENT_DROP_INDEX`('i_resource_count__type_accountId', 'cloud.resource_count');
+CALL `cloud`.`IDEMPOTENT_DROP_INDEX`('i_resource_count__type_domaintId', 'cloud.resource_count');
 
+DROP PROCEDURE IF EXISTS `cloud`.`IDEMPOTENT_ADD_UNIQUE_INDEX`;
+CREATE PROCEDURE `cloud`.`IDEMPOTENT_ADD_UNIQUE_INDEX` (
+    IN in_table_name VARCHAR(200),
+    IN in_index_name VARCHAR(200),
+    IN in_index_definition VARCHAR(1000)
+)
+BEGIN
+    DECLARE CONTINUE HANDLER FOR 1061 BEGIN END; SET @ddl = CONCAT('ALTER TABLE ', in_table_name, ' ', 'ADD UNIQUE INDEX ', in_index_name, ' ', in_index_definition); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt; END;
 
-ALTER TABLE `cloud`.`resource_reservation`
-    ADD COLUMN `resource_id` bigint unsigned NULL;
+CALL `cloud`.`IDEMPOTENT_ADD_UNIQUE_INDEX`('cloud.resource_count', 'i_resource_count__type_tag_accountId', '(type, tag, account_id)');
+CALL `cloud`.`IDEMPOTENT_ADD_UNIQUE_INDEX`('cloud.resource_count', 'i_resource_count__type_tag_domainId', '(type, tag, domain_id)');
 
 ALTER TABLE `cloud`.`resource_reservation`
     MODIFY COLUMN `amount` bigint NOT NULL;
+
+CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_reservation', 'resource_id', 'bigint unsigned NULL COMMENT "id of the resource" ');
+CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_reservation', 'mgmt_server_id', 'bigint unsigned NULL COMMENT "management server id" ');
+CALL `cloud`.`IDEMPOTENT_ADD_COLUMN`('cloud.resource_reservation', 'created', 'datetime DEFAULT NULL COMMENT "date when the reservation was created" ');
+
+UPDATE `cloud`.`resource_reservation` SET `created` = now() WHERE created IS NULL;
 
 
 -- Update Default System offering for Router to 512MiB
@@ -122,3 +133,24 @@ CREATE TABLE `cloud`.`webhook_delivery` (
   CONSTRAINT `fk_webhook__event_id` FOREIGN KEY (`event_id`) REFERENCES `event`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_webhook__webhook_id` FOREIGN KEY (`webhook_id`) REFERENCES `webhook`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- Normalize quota.usage.smtp.useStartTLS, quota.usage.smtp.useAuth, alert.smtp.useAuth and project.smtp.useAuth values
+UPDATE
+    `cloud`.`configuration`
+SET
+    value = "true"
+WHERE
+    name IN ("quota.usage.smtp.useStartTLS", "quota.usage.smtp.useAuth", "alert.smtp.useAuth", "project.smtp.useAuth")
+    AND value IN ("true", "y", "t", "1", "on", "yes");
+
+UPDATE
+    `cloud`.`configuration`
+SET
+    value = "false"
+WHERE
+    name IN ("quota.usage.smtp.useStartTLS", "quota.usage.smtp.useAuth", "alert.smtp.useAuth", "project.smtp.useAuth")
+    AND value NOT IN ("true", "y", "t", "1", "on", "yes");
+
+
+-- Quota inject tariff result into subsequent ones
+CALL `cloud_usage`.`IDEMPOTENT_ADD_COLUMN`('cloud_usage.quota_tariff', 'position', 'bigint(20) NOT NULL DEFAULT 1 COMMENT "Position in the execution sequence for tariffs of the same type"');
