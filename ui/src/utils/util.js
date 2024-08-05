@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import semver from 'semver'
+
 export function timeFix () {
   const time = new Date()
   const hour = time.getHours()
@@ -67,4 +69,11 @@ export function sanitizeReverse (value) {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+}
+
+export function getParsedVersion (version) {
+  if (semver.valid(version) === null) {
+    version = version.split('4.')[1]
+  }
+  return version
 }
