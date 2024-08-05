@@ -371,5 +371,5 @@
 
     <bean id="volumeImportUnmanageManager" class="org.apache.cloudstack.storage.volume.VolumeImportUnmanageManagerImpl" />
 
-    <bean id="guiThemeServiceImpl" class="org.apache.cloudstack.gui.theme.GuiThemeServiceImpl" />
+    <bean id="guiThemeServiceImpl" class="org.apache.cloudstack.gui.themes.GuiThemeServiceImpl" />
 </beans>
