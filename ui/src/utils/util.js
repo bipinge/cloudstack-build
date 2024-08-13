@@ -72,8 +72,9 @@ export function sanitizeReverse (value) {
 }
 
 export function getParsedVersion (version) {
+  version = version.split('-')[0]
   if (semver.valid(version) === null) {
-    version = version.split('4.')[1]
+    version = version.split('.').slice(1).join('.')
   }
   return version
 }
