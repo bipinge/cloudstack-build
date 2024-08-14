@@ -2144,7 +2144,7 @@ class TestSharedNetworkWithConfigDrive(cloudstackTestCase):
 
         template = Template.register(
             cls.apiclient,
-            cls.services["test_templates_cloud_init"][cls.hv],
+            cls.services["test_templates_cloud_init"][cls.hv.lower()],
             zoneid=cls.zone.id,
             hypervisor=cls.hv,
         )
