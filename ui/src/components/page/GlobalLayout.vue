@@ -17,11 +17,29 @@
 
 <template>
   <div>
-    <a-affix v-if="this.$store.getters.shutdownTriggered" >
-      <a-alert :message="$t('message.shutdown.triggered')" type="error" banner :showIcon="false" class="shutdownHeader" />
+    <a-affix v-if="getNumberOfAlerts() > 0" >
+      <a-alert
+        v-if="this.$config.alertMessage && this.$config.alertMessage !== ''"
+        :type="this.$config.alertMessageType ? this.$config.alertMessageType : 'info'"
+        :showIcon="false"
+        banner
+        class="alertHeader">
+        <template #message>
+          <span v-html="$config.alertMessage"></span>
+        </template>
+        </a-alert>
+
+      <a-alert
+        v-if="this.$store.getters.shutdownTriggered"
+        :message="$t('message.shutdown.triggered')"
+        type="error"
+        banner
+        :showIcon="false"
+        class="alertHeader" />
+
     </a-affix>
     <a-layout class="layout" :class="[device]">
-      <a-affix style="z-index: 200" :offsetTop="this.$store.getters.shutdownTriggered ? 25 : 0">
+      <a-affix style="z-index: 200" :offsetTop="this.getNumberOfAlerts() * 25">
         <template v-if="isSideMenu()">
           <a-drawer
             v-if="isMobile()"
@@ -84,7 +102,7 @@
         <!-- layout header -->
         <a-affix style="z-index: 100">
           <global-header
-            :style="this.$store.getters.shutdownTriggered ? 'margin-top: 25px;' : null"
+            :style="'margin-top: ' + this.getNumberOfAlerts() * 25 + 'px;'"
             :mode="layoutMode"
             :menus="menus"
             :theme="navTheme"
@@ -260,6 +278,16 @@ export default {
       api('readyForShutdown', {}).then(json => {
         this.$store.dispatch('SetShutdownTriggered', json.readyforshutdownresponse.readyforshutdown.shutdowntriggered || false)
       })
+    },
+    getNumberOfAlerts () {
+      let count = 0
+      if (this.$store.getters.shutdownTriggered) {
+        count++
+      }
+      if (this.$config.alertMessage && this.$config.alertMessage !== '') {
+        count++
+      }
+      return count
     }
   }
 }
@@ -307,7 +335,7 @@ export default {
   }
 }
 
-.shutdownHeader {
+.alertHeader {
   font-weight: bold;
   height: 25px;
   text-align: center;
